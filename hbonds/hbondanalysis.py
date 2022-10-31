@@ -10,18 +10,18 @@ from hbonds.periodic_table import (
     Z_to_atomic_weight,
 )
 
-
 class HbondAnalyst:
 
     """H-bond analyst class, classifies the H-bonds in a
        water geometry (periodic box)
     """
 
-    def __init__(self, file_name, a, b, c, alpha=90, beta=90, gamma=90, angle_unit="degrees"):
+    def __init__(self, file_name, a, b, c, output, alpha=90, beta=90, gamma=90, angle_unit="degrees"):
 
         """
         """
         self.file_name = file_name
+        self.output = output
         xyz_reader = FileHandlerXYZ(self.file_name)
         self.symbols, self.xyz = xyz_reader.read()
         self.Z = np.fromiter(map(symbol_to_Z, np.atleast_1d(self.symbols)), dtype=int)
@@ -36,15 +36,8 @@ class HbondAnalyst:
             self.beta = degrees_to_radians(beta)
             self.gamma = degrees_to_radians(gamma)
 
-        if(np.any(self.bonds_per_O != 2)):
-            print("Found non-water in geometry")
-
-        if(np.any(self.bonds_per_H != 1)):
-            print("Found close lying H-atoms")
-
-        if(np.any(self.Z != 1) and np.any(self.Z != 8)):
-            print("Found non-water in geometry")
-
+        self.__compute_distances()
+        self.__determine_Hbonds()
 
     @property
     def fromABC(self):
@@ -78,13 +71,23 @@ class HbondAnalyst:
 
         return U
 
-    @property
-    def distances(self):
+    def get_xyz_distance(self, i, j):
+
+        xyz =  self.xyz[i,:] - self.xyz[j,:]
+
+        ABC = np.matmul(xyz, self.toABC)
+        ABC = ABC - np.rint(ABC)
+        xyz = np.matmul(ABC, self.fromABC)
+
+        return xyz[0], xyz[1], xyz[2]
+
+
+    def __compute_distances(self):
         """Distances between atoms in xyz-geometry with PBC"""
 
         # Distances in x,y,z-directions between every atom
         xyz_distances = self.xyz[:,None] - self.xyz[None,:]
-        D = np.zeros([np.size(self.Z), np.size(self.Z)])
+        self.D = np.zeros([np.size(self.Z), np.size(self.Z)])
 
         for i in range(np.size(xyz_distances,0)):
 
@@ -92,9 +95,63 @@ class HbondAnalyst:
             S = S - np.rint(S)
 
             R = np.matmul(S, self.fromABC)
-            D[i] = np.sqrt(np.sum(R**2, axis=1))
+            self.D[i] = np.sqrt(np.sum(R**2, axis=1))
 
-        return D
+
+    def __determine_Hbonds(self):
+
+        accepting = np.zeros(self.n_atoms, dtype=int)
+        donating = np.zeros(self.n_atoms, dtype=int)
+
+        A = self.non_bonded_neighbours
+
+        for i in self.O_indices:
+
+            for j in self.O_indices:
+
+                if (A[i][j] == 0):
+                    continue
+
+                xOO, yOO, zOO = self.get_xyz_distance(i, j)
+                dOO = self.D[i][j]
+
+                for k in self.bonded_H(i):
+                    xOH, yOH, zOH = self.get_xyz_distance(i, k)
+                    dOH = self.D[i][k]
+
+                    cos_theta = (xOO*xOH + yOO*yOH + zOO*zOH)/(dOO*dOH)
+                    theta = radians_to_degrees(np.arccos(cos_theta))
+
+                    if (theta < 30):
+                        accepting[j] = accepting[j] + 1
+                        donating[i] = donating[i] + 1
+
+        self.accepting = accepting[self.O_indices]
+        self.donating = donating[self.O_indices]
+
+
+    def print_summary(self):
+
+        f = open(self.output, "a")
+        f.write("\nWater H-bond characterization:\n")
+        f.write("------------------------------\n")
+        f.write(f"File: {self.file_name}\n")
+        f.write(f"Atoms: {self.n_atoms} (O: {self.n_O}, H: {self.n_H}, other: {self.n_atoms - self.n_O - self.n_H})\n")
+
+        f.write("\nIndex  Character      OH-distances\n")
+        f.write("--------------------------------------\n")
+        for i in range(self.n_O):
+            dOH = self.D[self.O_indices[i]][self.bonded_H(self.O_indices[i])]
+            f.write("{:3d}      D{:d}A{:d}      {:.4f}       {:.4f}\n".format(self.O_indices[i] + 1,
+                                                                           self.donating[i],
+                                                                           self.accepting[i],
+                                                                           dOH[0],
+                                                                           dOH[1]
+                                                                          )
+                )
+
+        f.write("--------------------------------------\n")
+        f.close()
 
     @property
     def n_O(self):
@@ -102,7 +159,7 @@ class HbondAnalyst:
 
     @property
     def O_indices(self):
-        return np.where(self.Z == 8)
+        return np.where(self.Z == 8)[0]
 
     @property
     def n_H(self):
@@ -110,7 +167,7 @@ class HbondAnalyst:
 
     @property
     def H_indices(self):
-        return np.where(self.Z == 1)
+        return np.where(self.Z == 1)[0]
 
     @property
     def n_atoms(self):
@@ -120,19 +177,16 @@ class HbondAnalyst:
     def bond_matrix(self):
         B = np.zeros([self.n_atoms, self.n_atoms], dtype=int)
 
-        D = self.distances
+        D = self.D
         B[np.where((D < 1.3) & (D > 0.0))] = 1
         return B
 
-
     @property
-    def close_O(self):
+    def non_bonded_neighbours(self):
+
         B = np.zeros([self.n_atoms, self.n_atoms], dtype=int)
-        C = np.zeros([self.n_atoms, self.n_atoms], dtype=int)
-
-        D = self.distances
-        B[np.where((D < 3.5) & (D > 0.0) & (self.Z ==8))] = 1
-
+        D = self.D
+        B[np.where((D < 3.5) & (D > 1.3))] = 1
         return B
 
     @property
@@ -147,8 +201,13 @@ class HbondAnalyst:
     def bonds_per_H(self):
         return self.bonds_per_atom[self.H_indices]
 
+    def bonded_H(self, i):
+        return np.where(self.bond_matrix[i] == 1)[0]
 
 def degrees_to_radians(angle):
     return angle*pi/180.0
+
+def radians_to_degrees(angle):
+    return angle*180.0/pi
 
 

@@ -42,8 +42,9 @@ class HbondAnalyst:
             self.beta = degrees_to_radians(beta)
             self.gamma = degrees_to_radians(gamma)
 
-    def determine_Hbonds(self):
+    def determine_Hbonds(self, hbond_condition="theoretical"):
 
+        self.hbond_condition = hbond_condition
         self.__compute_distances()
         self.__determine_all_Hbonds()
 
@@ -134,7 +135,7 @@ class HbondAnalyst:
             self.D[i] = np.sqrt(np.sum(xyz**2, axis=1))
 
 
-    def __determine_all_Hbonds(self):
+    def __determine_all_Hbonds_theoretical(self):
 
         accepting = np.zeros(self.n_atoms, dtype=int)
         donating = np.zeros(self.n_atoms, dtype=int)
@@ -166,6 +167,46 @@ class HbondAnalyst:
         self.donating = donating[self.O_indices]
 
 
+    def __determine_all_Hbonds_wernet(self):
+        accepting = np.zeros(self.n_atoms, dtype=int)
+        donating = np.zeros(self.n_atoms, dtype=int)
+
+        A = self.non_bonded_neighbours
+
+        for i in self.O_indices:
+
+            for j in self.O_indices:
+
+                if (A[i][j] == 0):
+                    continue
+
+                xOO, yOO, zOO = self.get_xyz_distance(i, j)
+                dOO = self.D[i][j]
+
+                for k in self.bonded_H(i):
+                    xOH, yOH, zOH = self.get_xyz_distance(i, k)
+                    dOH = self.D[i][k]
+
+                    cos_theta = (xOO*xOH + yOO*yOH + zOO*zOH)/(dOO*dOH)
+                    theta = radians_to_degrees(np.arccos(cos_theta))
+
+                    if (theta < 45):
+                        if (dOO < 3.3 - 0.00044*theta**2):
+                            accepting[j] = accepting[j] + 1
+                            donating[i] = donating[i] + 1
+
+        self.accepting = accepting[self.O_indices]
+        self.donating = donating[self.O_indices]
+
+    def __determine_all_Hbonds(self):
+
+        if self.hbond_condition == "theoretical":
+            self.__determine_all_Hbonds_theoretical()
+        elif self.hbond_condition == "wernet2005":
+            self.__determine_all_Hbonds_wernet()
+        else:
+            print("Hbond condition should be either theoretical or wernet2005, default is theoretical")
+
     def print_summary(self):
 
         f = open(self.out_file, "a")
@@ -173,7 +214,7 @@ class HbondAnalyst:
         f.write("------------------------------\n")
         f.write(f"File: {self.in_file}\n")
         f.write(f"Atoms: {self.n_atoms} (O: {self.n_O}, H: {self.n_H}, other: {self.n_atoms - self.n_O - self.n_H})\n")
-
+        f.write(f"\nH-bond condition: {self.hbond_condition}\n")
         f.write("\nIndex  Character      OH-distances\n")
         f.write("--------------------------------------\n")
         for i in range(self.n_O):

@@ -16,15 +16,21 @@ class HbondAnalyst:
        water geometry (periodic box)
     """
 
-    def __init__(self, file_name, a, b, c, output, alpha=90, beta=90, gamma=90, angle_unit="degrees"):
+    def __init__(self, in_file, out_file):
 
         """
         """
-        self.file_name = file_name
-        self.output = output
-        xyz_reader = FileHandlerXYZ(self.file_name)
+        self.in_file = in_file
+        self.out_file = out_file
+
+        xyz_reader = FileHandlerXYZ(self.in_file)
         self.symbols, self.xyz = xyz_reader.read()
         self.Z = np.fromiter(map(symbol_to_Z, np.atleast_1d(self.symbols)), dtype=int)
+        self.PBC = None
+
+    def set_PBC(self, a, b, c, alpha=90, beta=90, gamma=90, angle_unit="degrees"):
+
+        self.PBC = True
 
         # Cell parameters
         self.a = a
@@ -36,8 +42,34 @@ class HbondAnalyst:
             self.beta = degrees_to_radians(beta)
             self.gamma = degrees_to_radians(gamma)
 
+    def determine_Hbonds(self):
+
         self.__compute_distances()
-        self.__determine_Hbonds()
+        self.__determine_all_Hbonds()
+
+    def print_Hbond_for_O(self, i):
+
+        f = open(self.out_file, "a")
+        f.write(f"\nWater H-bond characterization for oxygen number {i}:\n")
+        f.write("------------------------------\n")
+        f.write(f"File: {self.in_file}\n")
+        f.write(f"Atoms: {self.n_atoms} (O: {self.n_O}, H: {self.n_H}, other: {self.n_atoms - self.n_O - self.n_H})\n")
+
+
+        f.write("\nIndex  Character      OH-distances\n")
+        f.write("--------------------------------------\n")
+        dOH = self.D[self.O_indices[i]][self.bonded_H(self.O_indices[i])]
+        f.write("{:3d}      D{:d}A{:d}      {:.4f}       {:.4f}\n".format(self.O_indices[i] + 1,
+                                                                       self.donating[i],
+                                                                       self.accepting[i],
+                                                                       dOH[0],
+                                                                       dOH[1]
+                                                                      )
+            )
+
+        f.write("--------------------------------------\n")
+        f.close()
+
 
     @property
     def fromABC(self):
@@ -75,9 +107,10 @@ class HbondAnalyst:
 
         xyz =  self.xyz[i,:] - self.xyz[j,:]
 
-        ABC = np.matmul(xyz, self.toABC)
-        ABC = ABC - np.rint(ABC)
-        xyz = np.matmul(ABC, self.fromABC)
+        if self.PBC:
+            ABC = np.matmul(xyz, self.toABC)
+            ABC = ABC - np.rint(ABC)
+            xyz = np.matmul(ABC, self.fromABC)
 
         return xyz[0], xyz[1], xyz[2]
 
@@ -91,14 +124,17 @@ class HbondAnalyst:
 
         for i in range(np.size(xyz_distances,0)):
 
-            S = np.matmul(xyz_distances[i], self.toABC)
-            S = S - np.rint(S)
+            xyz = xyz_distances[i]
 
-            R = np.matmul(S, self.fromABC)
-            self.D[i] = np.sqrt(np.sum(R**2, axis=1))
+            if self.PBC:
+                S = np.matmul(xyz, self.toABC)
+                S = S - np.rint(S)
+                xyz = np.matmul(S, self.fromABC)
+
+            self.D[i] = np.sqrt(np.sum(xyz**2, axis=1))
 
 
-    def __determine_Hbonds(self):
+    def __determine_all_Hbonds(self):
 
         accepting = np.zeros(self.n_atoms, dtype=int)
         donating = np.zeros(self.n_atoms, dtype=int)
@@ -132,10 +168,10 @@ class HbondAnalyst:
 
     def print_summary(self):
 
-        f = open(self.output, "a")
+        f = open(self.out_file, "a")
         f.write("\nWater H-bond characterization:\n")
         f.write("------------------------------\n")
-        f.write(f"File: {self.file_name}\n")
+        f.write(f"File: {self.in_file}\n")
         f.write(f"Atoms: {self.n_atoms} (O: {self.n_O}, H: {self.n_H}, other: {self.n_atoms - self.n_O - self.n_H})\n")
 
         f.write("\nIndex  Character      OH-distances\n")

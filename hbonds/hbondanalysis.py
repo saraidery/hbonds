@@ -7,8 +7,7 @@ from hbonds.io import FileHandlerXYZ
 from math import pi
 
 from hbonds.periodic_table import (
-    symbol_to_Z,
-    Z_to_atomic_weight,
+    symbol_to_Z
 )
 
 class HbondAnalyst(abc.ABC):

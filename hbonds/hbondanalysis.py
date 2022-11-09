@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from abc import ABC
+import abc
 from scipy.spatial import distance_matrix
 from hbonds.io import FileHandlerXYZ
 
@@ -11,20 +11,19 @@ from hbonds.periodic_table import (
     Z_to_atomic_weight,
 )
 
-class HbondAnalyst(ABC):
+class HbondAnalyst(abc.ABC):
 
     """H-bond analyst class, classifies the H-bonds in a
        water geometry (abstract class)
     """
 
-    @abstractmethod
-    def __get_xyz_distance(self, i, j):
+    @abc.abstractmethod
+    def get_xyz_distance(self, i, j):
         pass
 
-    @abstractmethod
-    def __compute_distances(self):
+    @abc.abstractmethod
+    def compute_distances(self):
         pass
-
 
     def determine_Hbonds(self, hbond_condition="theoretical"):
         self.hbond_condition = hbond_condition
@@ -40,7 +39,7 @@ class HbondAnalyst(ABC):
 
        f.write("\nIndex  Character      OH-distances\n")
        f.write("--------------------------------------\n")
-       dOH = self.D[self.O_indices[i-1]][self.bonded_H(self.O_indices[i-1])]
+       dOH = self.D[self.O_indices[i-1]][self.__bonded_H(self.O_indices[i-1])]
        f.write("{:3d}      D{:d}A{:d}      {:.4f}       {:.4f}\n".format(self.O_indices[i-1] + 1,
                                                                       self.donating[i-1],
                                                                       self.accepting[i-1],
@@ -54,7 +53,7 @@ class HbondAnalyst(ABC):
 
 
 
-    def __compute_distances(self):
+    def compute_distances(self):
         """Distances between atoms in xyz-geometry with PBC"""
 
         # Distances in x,y,z-directions between every atom
@@ -89,11 +88,11 @@ class HbondAnalyst(ABC):
                 if (A[i][j] == 0):
                     continue
 
-                xOO, yOO, zOO = self.__get_xyz_distance(i, j)
+                xOO, yOO, zOO = self.get_xyz_distance(i, j)
                 dOO = self.D[i][j]
 
-                for k in self.bonded_H(i):
-                    xOH, yOH, zOH = self.__get_xyz_distance(i, k)
+                for k in self.__bonded_H(i):
+                    xOH, yOH, zOH = self.get_xyz_distance(i, k)
                     dOH = self.D[i][k]
 
                     cos_theta = (xOO*xOH + yOO*yOH + zOO*zOH)/(dOO*dOH)
@@ -120,11 +119,11 @@ class HbondAnalyst(ABC):
                 if (A[i][j] == 0):
                     continue
 
-                xOO, yOO, zOO = self.__get_xyz_distance(i, j)
+                xOO, yOO, zOO = self.get_xyz_distance(i, j)
                 dOO = self.D[i][j]
 
-                for k in self.bonded_H(i):
-                    xOH, yOH, zOH = self.__get_xyz_distance(i, k)
+                for k in self.__bonded_H(i):
+                    xOH, yOH, zOH = self.get_xyz_distance(i, k)
                     dOH = self.D[i][k]
 
                     cos_theta = (xOO*xOH + yOO*yOH + zOO*zOH)/(dOO*dOH)
@@ -158,7 +157,7 @@ class HbondAnalyst(ABC):
         f.write("\nIndex  Character      OH-distances\n")
         f.write("--------------------------------------\n")
         for i in range(self.n_O):
-            dOH = self.D[self.O_indices[i]][self.bonded_H(self.O_indices[i])]
+            dOH = self.D[self.O_indices[i]][self.__bonded_H(self.O_indices[i])]
             f.write("{:3d}      D{:d}A{:d}      {:.4f}       {:.4f}\n".format(self.O_indices[i] + 1,
                                                                            self.donating[i],
                                                                            self.accepting[i],
@@ -216,8 +215,7 @@ class HbondAnalyst(ABC):
     def bonds_per_H(self):
         return self.bonds_per_atom[self.H_indices]
 
-    @property
-    def bonded_H(self, i):
+    def __bonded_H(self, i):
         return np.where(self.bond_matrix[i] == 1)[0]
 
 
@@ -239,7 +237,7 @@ class PBCHbondAnalyst(HbondAnalyst):
         self.Z = np.fromiter(map(symbol_to_Z, np.atleast_1d(self.symbols)), dtype=int)
 
         self.__set_PBC(a, b, c, alpha, beta, gamma, angle_unit)
-        self.__compute_distances()
+        self.compute_distances()
 
     def __set_PBC(self, a, b, c, alpha=90, beta=90, gamma=90, angle_unit="degrees"):
 
@@ -286,7 +284,7 @@ class PBCHbondAnalyst(HbondAnalyst):
 
         return U
 
-    def __get_xyz_distance(self, i, j):
+    def get_xyz_distance(self, i, j):
 
         xyz =  self.xyz[i,:] - self.xyz[j,:]
 
@@ -297,7 +295,7 @@ class PBCHbondAnalyst(HbondAnalyst):
         return xyz[0], xyz[1], xyz[2]
 
 
-    def __compute_distances(self):
+    def compute_distances(self):
         """Distances between atoms in xyz-geometry with PBC"""
 
         # Distances in x,y,z-directions between every atom
@@ -332,15 +330,15 @@ class ClusterHbondAnalyst(HbondAnalyst):
         self.symbols, self.xyz = xyz_reader.read()
         self.Z = np.fromiter(map(symbol_to_Z, np.atleast_1d(self.symbols)), dtype=int)
 
-        self.__compute_distances()
+        self.compute_distances()
 
-    def __get_xyz_distance(self, i, j):
+    def get_xyz_distance(self, i, j):
 
         xyz =  self.xyz[i,:] - self.xyz[j,:]
 
         return xyz[0], xyz[1], xyz[2]
 
-    def __compute_distances(self):
+    def compute_distances(self):
         """Distances between atoms in xyz-geometry"""
 
         self.D = distance_matrix(self.xyz, self.xyz)

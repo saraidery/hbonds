@@ -1,0 +1,10 @@
+
+Water H-bond characterization for oxygen number 1:
+------------------------------
+File: /Users/sarai/repo/hbonds/hbonds/tests/water_cluster.xyz
+Atoms: 306 (O: 102, H: 204, other: 0)
+
+Index  Character      OH-distances
+--------------------------------------
+  1      D2A3      0.9721       0.9641
+--------------------------------------

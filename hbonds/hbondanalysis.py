@@ -53,27 +53,6 @@ class HbondAnalyst(abc.ABC):
 
 
 
-    def compute_distances(self):
-        """Distances between atoms in xyz-geometry with PBC"""
-
-        # Distances in x,y,z-directions between every atom
-        if self.PBC:
-            xyz_distances = self.xyz[:,None] - self.xyz[None,:]
-            self.D = np.zeros([np.size(self.Z), np.size(self.Z)])
-
-            for i in range(np.size(xyz_distances,0)):
-
-                xyz = xyz_distances[i]
-
-                S = np.matmul(xyz, self.toABC)
-                S = S - np.rint(S)
-                xyz = np.matmul(S, self.fromABC)
-
-                self.D[i] = np.sqrt(np.sum(xyz**2, axis=1))
-        else:
-            self.D = distance_matrix(self.xyz, self.xyz)
-
-
     def __determine_all_Hbonds_theoretical(self):
 
         accepting = np.zeros(self.n_atoms, dtype=int)
@@ -148,7 +127,7 @@ class HbondAnalyst(abc.ABC):
 
     def print_summary(self):
 
-        f = open(self.out_file, "a")
+        f = open(self.out_file, "w")
         f.write("\nWater H-bond characterization:\n")
         f.write("------------------------------\n")
         f.write(f"File: {self.in_file}\n")
@@ -254,7 +233,8 @@ class PBCHbondAnalyst(HbondAnalyst):
             self.gamma = degrees_to_radians(gamma)
 
 
-    def __fromABC(self):
+    @property
+    def fromABC(self):
 
         cos_a = np.cos(self.alpha)
         cos_b = np.cos(self.beta)
@@ -271,7 +251,8 @@ class PBCHbondAnalyst(HbondAnalyst):
 
         return T
 
-    def __toABC(self):
+    @property
+    def toABC(self):
 
         U = np.zeros([3,3])
         T = self.fromABC

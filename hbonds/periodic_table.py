@@ -30,4 +30,3 @@ def symbol_to_Z(symbol):
     Z = periodic_table_dict[symbol]
 
     return Z
-

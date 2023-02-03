@@ -6,6 +6,7 @@ import filecmp
 from hbonds.hbondanalysis import ClusterHbondAnalyst
 from hbonds.hbondanalysis import PBCHbondAnalyst
 
+
 class TestHbonds:
     def test_PBC_geometry(self):
 
@@ -24,7 +25,6 @@ class TestHbonds:
         os.remove(file_out)
 
         assert ref_list == out_list
-
 
     def test_PBC_geometry_wernet(self):
 

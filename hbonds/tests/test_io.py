@@ -8,7 +8,6 @@ from hbonds import io
 
 class TestIO:
     def test_io_read(self):
-
         xyz_reference = np.array(
             [
                 [0.86681, 0.60100, 0.00000],

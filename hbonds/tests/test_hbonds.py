@@ -9,7 +9,6 @@ from hbonds.hbondanalysis import PBCHbondAnalyst
 
 class TestHbonds:
     def test_PBC_geometry(self):
-
         file_path = os.path.dirname(__file__)
         file_in = os.path.join(file_path, "water_PBC.xyz")
         file_out = os.path.join(file_path, "water_PBC.out")
@@ -27,7 +26,6 @@ class TestHbonds:
         assert ref_list == out_list
 
     def test_PBC_geometry_wernet(self):
-
         file_path = os.path.dirname(__file__)
         file_in = os.path.join(file_path, "water_PBC.xyz")
         file_out = os.path.join(file_path, "water_PBC.out")
@@ -45,7 +43,6 @@ class TestHbonds:
         assert ref_list == out_list
 
     def test_cluster_geometry(self):
-
         file_path = os.path.dirname(__file__)
         file_in = os.path.join(file_path, "water_cluster.xyz")
         file_out = os.path.join(file_path, "water_cluster.out")

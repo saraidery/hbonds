@@ -22,7 +22,6 @@ class FileHandlerXYZ:
     """
 
     def __init__(self, file_name):
-
         """Creates a xyz-file handler
 
         Parameters
@@ -33,7 +32,6 @@ class FileHandlerXYZ:
         self.file_name = os.path.expanduser(file_name.strip())
 
     def read(self):
-
         """Read xyz-file"""
 
         symbols, x, y, z = np.loadtxt(
@@ -54,7 +52,6 @@ class FileHandlerXYZ:
         return symbols, xyz
 
     def write(self, symbols, xyz, comment=""):
-
         """Write xyz-file
 
         Parameters

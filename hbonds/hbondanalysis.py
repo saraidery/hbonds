@@ -53,16 +53,13 @@ class HbondAnalyst(abc.ABC):
         f.close()
 
     def __determine_all_Hbonds_theoretical(self):
-
         accepting = np.zeros(self.n_atoms, dtype=int)
         donating = np.zeros(self.n_atoms, dtype=int)
 
         A = self.non_bonded_neighbours
 
         for i in self.O_indices:
-
             for j in self.O_indices:
-
                 if A[i][j] == 0:
                     continue
 
@@ -90,9 +87,7 @@ class HbondAnalyst(abc.ABC):
         A = self.non_bonded_neighbours
 
         for i in self.O_indices:
-
             for j in self.O_indices:
-
                 if A[i][j] == 0:
                     continue
 
@@ -115,7 +110,6 @@ class HbondAnalyst(abc.ABC):
         self.donating = donating[self.O_indices]
 
     def __determine_all_Hbonds(self):
-
         if self.hbond_condition == "theoretical":
             self.__determine_all_Hbonds_theoretical()
         elif self.hbond_condition == "wernet2005":
@@ -126,7 +120,6 @@ class HbondAnalyst(abc.ABC):
             )
 
     def print_summary(self):
-
         f = open(self.out_file, "w")
         f.write("\nWater H-bond characterization:\n")
         f.write("------------------------------\n")
@@ -181,7 +174,6 @@ class HbondAnalyst(abc.ABC):
 
     @property
     def non_bonded_neighbours(self):
-
         B = np.zeros([self.n_atoms, self.n_atoms], dtype=int)
         B[np.where((self.D < 3.5) & (self.D > 1.3))] = 1
         return B
@@ -220,7 +212,6 @@ class PBCHbondAnalyst(HbondAnalyst):
         gamma=90,
         angle_unit="degrees",
     ):
-
         """ """
         self.in_file = in_file
         self.out_file = out_file
@@ -233,7 +224,6 @@ class PBCHbondAnalyst(HbondAnalyst):
         self.compute_distances()
 
     def __set_PBC(self, a, b, c, alpha=90, beta=90, gamma=90, angle_unit="degrees"):
-
         self.PBC = True
 
         # Cell parameters
@@ -248,7 +238,6 @@ class PBCHbondAnalyst(HbondAnalyst):
 
     @property
     def fromABC(self):
-
         cos_a = np.cos(self.alpha)
         cos_b = np.cos(self.beta)
         cos_c = np.cos(self.gamma)
@@ -269,7 +258,6 @@ class PBCHbondAnalyst(HbondAnalyst):
 
     @property
     def toABC(self):
-
         U = np.zeros([3, 3])
         T = self.fromABC
         U[0][0] = 1.0 / T[0][0]
@@ -284,7 +272,6 @@ class PBCHbondAnalyst(HbondAnalyst):
         return U
 
     def get_xyz_distance(self, i, j):
-
         xyz = self.xyz[i, :] - self.xyz[j, :]
 
         ABC = np.matmul(xyz, self.toABC)
@@ -301,7 +288,6 @@ class PBCHbondAnalyst(HbondAnalyst):
         self.D = np.zeros([np.size(self.Z), np.size(self.Z)])
 
         for i in range(np.size(xyz_distances, 0)):
-
             xyz = xyz_distances[i]
 
             S = np.matmul(xyz, self.toABC)
@@ -318,7 +304,6 @@ class ClusterHbondAnalyst(HbondAnalyst):
     """
 
     def __init__(self, in_file, out_file):
-
         """ """
         self.in_file = in_file
         self.out_file = out_file
@@ -330,7 +315,6 @@ class ClusterHbondAnalyst(HbondAnalyst):
         self.compute_distances()
 
     def get_xyz_distance(self, i, j):
-
         xyz = self.xyz[i, :] - self.xyz[j, :]
 
         return xyz[0], xyz[1], xyz[2]

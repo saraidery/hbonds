@@ -1,0 +1,49 @@
+name: build
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  schedule:
+      - cron: "0 0 * * 1"
+
+
+jobs:
+  build-with-pip:
+    name: ubuntu-latest-3.7
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Display versions
+        run: python -V; pip -V
+      - name: Install depedencies and package
+        shell: bash
+        run: pip install -U -e .'[tests]'
+      - name: Run tests
+        run: pytest --cov=hbonds --pyargs hbonds
+      - name: Generate line coverage
+        run: coverage report --show-missing
+      - name: Install Black
+        run: pip install black
+      - name: Run black --check .
+        run: black --check .
+      - name: Upload coverage to Coveralls
+        uses: AndreMiras/coveralls-python-action@develop
+        with:
+          parallel: true
+
+  coveralls-finish:
+    needs: build-with-pip
+    runs-on: ubuntu-latest
+    steps:
+    - name: Coveralls finished
+      uses: AndreMiras/coveralls-python-action@develop
+      with:
+        parallel-finished: true

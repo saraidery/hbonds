@@ -7,10 +7,6 @@ H-bonds analyzer
     :alt: Build status
 
 
-.. image:: https://coveralls.io/repos/github/saraidery/hbonds/badge.svg?branch=master
-    :target: https://coveralls.io/github/saraidery/hbonds?branch=master
-    :alt: Coverage status
-
 Installation
 ------------
 Will be added soon
